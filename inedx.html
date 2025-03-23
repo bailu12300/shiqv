@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全球主要时区时间</title>
+    <style>
+        /* 新增洛杉矶时间的响应式布局 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            padding: 2rem;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h1 {
+            color: #1a1a1a;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 1.8rem;
+        }
+
+        .time-card {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .time-group {
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            border-radius: 8px;
+            background: #f8f9fa;
+            transition: all 0.2s;
+        }
+
+        .time-group.highlight {
+            background: #e6f4ff;
+            border: 2px solid #1890ff;
+        }
+
+        .time-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .time-value {
+            font-family: monospace;
+            font-size: 1.2rem;
+            color: #1a1a1a;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .time-value {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>全球主要时区时间</h1>
+        <div class="time-card">
+            <div class="time-group highlight">
+                <span class="time-label">北京时间 (UTC+8)</span>
+                <span class="time-value" id="beijing">-</span>
+            </div>
+            <div class="time-group">
+                <span class="time-label">洛杉矶时间 (UTC-8)</span>
+                <span class="time-value" id="losangeles">-</span>
+            </div>
+            <div class="time-group">
+                <span class="time-label">纽约时间 (UTC-5)</span>
+                <span class="time-value" id="newyork">-</span>
+            </div>
+            <div class="time-group">
+                <span class="time-label">伦敦时间 (UTC+0)</span>
+                <span class="time-value" id="london">-</span>
+            </div>
+            <div class="time-group">
+                <span class="time-label">东京时间 (UTC+9)</span>
+                <span class="time-value" id="tokyo">-</span>
+            </div>
+            <div class="time-group">
+                <span class="time-label">悉尼时间 (UTC+10)</span>
+                <span class="time-value" id="sydney">-</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 更新时区配置（新增洛杉矶）
+        const timeZones = [
+            { id: 'beijing', zone: 'Asia/Shanghai', label: '北京时间' },
+            { id: 'losangeles', zone: 'America/Los_Angeles', label: '洛杉矶时间' },
+            { id: 'newyork', zone: 'America/New_York', label: '纽约时间' },
+            { id: 'london', zone: 'Europe/London', label: '伦敦时间' },
+            { id: 'tokyo', zone: 'Asia/Tokyo', label: '东京时间' },
+            { id: 'sydney', zone: 'Australia/Sydney', label: '悉尼时间' }
+        ]
+
+        // 增强版时间格式化器
+        const formatter = (timeZone) => {
+            return new Intl.DateTimeFormat('zh-CN', {
+                timeZone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                weekday: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3,
+                hourCycle: 'h23'
+            })
+        }
+
+        // 改进的兼容方案（新增洛杉矶时区处理）
+        function formatTime(date, timeZone) {
+            try {
+                const formatted = formatter(timeZone).format(date)
+                return formatted.replace(/(\d+)\/(\d+)\/(\d+), (.*)/, (_, y, m, d, t) => 
+                    `${y}-${m}-${d} 周${['日','一','二','三','四','五','六'][date.getDay()]} ${t}`)
+            } catch (e) {
+                const offset = date.getTimezoneOffset() * 60 * 1000
+                const utc = date.getTime() + offset
+                const tzMap = {
+                    'Asia/Shanghai': 8,
+                    'America/Los_Angeles': -8,  // 夏令时期间实际为-7
+                    'America/New_York': -5,
+                    'Europe/London': 0,
+                    'Asia/Tokyo': 9,
+                    'Australia/Sydney': 10
+                }
+                const diff = (tzMap[timeZone] || 0) * 60 * 60 * 1000
+                const localDate = new Date(utc + diff)
+                
+                return `${localDate.getFullYear()}-${pad(localDate.getMonth()+1)}-${pad(localDate.getDate())} 周${['日','一','二','三','四','五','六'][localDate.getDay()]} ` +
+                       `${pad(localDate.getHours())}:${pad(localDate.getMinutes())}:` +
+                       `${pad(localDate.getSeconds())}.${localDate.getMilliseconds().toString().padStart(3, '0')}`
+            }
+        }
+
+        // 保持原有的更新时间逻辑
+        function updateAllTimes() {
+            const now = new Date()
+            timeZones.forEach(tz => {
+                const elem = document.getElementById(tz.id)
+                elem.textContent = formatTime(now, tz.zone)
+            })
+        }
+
+        // 启动定时器
+        updateAllTimes()
+        setInterval(updateAllTimes, 100)
+    </script>
+</body>
+</html>
